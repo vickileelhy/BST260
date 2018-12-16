@@ -1,0 +1,835 @@
+---
+title: "Weather Conditions in 10 US Cities in the Past 5 Years (2012.10-2017.09)"
+author: "Hongyan Li, Fenglei Wang"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### 1. Motivation: Stories from Hongyan Li
+
+I still remember the severe blizzard on January 27, 2015, we were out of heating because the extreme cold froze the critical part of our furnace, and no one could come to repair in heavy snow. Finally, it turned out that winter was recorded as [the worst winter][1] in the history of Boston! Not only the winter, we were also shocked by the recent hot summers. I always felt that summer was a comfortable season in Boston before, but we were surprised to have the [warmest August][2] on record in 2018 and 2016. As we experienced extreme weathers in the past several years, we would like to know the trend of weather conditions in Boston and some other cities in US in recent years.
+
+Several years ago, my Mom came to US in winter and our whole family planned to go to Grand Canyon and California for a vacation. We were so excited and planned this trip since my mother got the visa months ago.  We first arrived in New York for transfer, but we all were stuck in JFK airport because of the heavy snow, the flight was delay for more than 10 hours, and we were extremely tired, especially my daughter. The bad luck did not end after we boarded on the plane. It started to snow in the afternoon when we were leaving Grand Canyon. Driving downhill on the newly falling slippery snow in the dark was really a challenge even though I had been driving in Minnesota and Wisconsin for years. My little daughter even got a high fever, and we had to cancel all the plans afterwards. I always remember this frustrated experience, so we would like to make some recommendations to help visitors to choose best times to visit certain place or best places to visit in certain month.
+
+### 2. Global Warming, Data Sources, and 10 US Cities in the Project
+
+#### Global Warming
+
+The more and more frequent extreme weather is linked with the [global warming][3], which has been seen as a pattern of the [increasing average temperature][4] in the whole world [since 1950s][5]. However, the rate and intensity of the global warming is not a constant. It varies due to many factors, with some years being warmer, and some years not. As we have underwent super [El Nino during 2014-2016][6], we would like to use our available data to see if the weather trend in the 10 big US cities in the past 5 years (Oct 2012- Sep. 2017).
+
+#### Data Sources
+
+Data was downloaded from [Kaggle][Data Source]. The dataset contains around 5 years of high temporal resolution (hourly measurements) data of various weather attributes, including temperature, humidity, wind speed, and weather description, from 30 US & Canadian Cities and 6 Israeli Cities.
+
+Here, we only analyzed the following 10 US coastal cities, which are well-known tourism cities. (West coast: Seattle, Portland, San Francisco, Los Angeles, and San Diego; East coast: Boston, New York, Philadelphia, Jacksonville, Miami)
+
+#### Import Data
+
+```{r, warning=FALSE, message=FALSE}
+
+library(readr)
+
+# Read the air temperature, humidity, wind speed, and weather description data 
+temp <- read_csv("temperature.csv")
+hum <- read_csv("humidity.csv")
+wind <- read_csv("wind_speed.csv")
+des <- read_csv("weather_description.csv")
+
+```
+
+#### Clean Data
+
+```{r, warning=FALSE, message=FALSE}
+
+library(dplyr)
+library(lubridate)
+
+# Extract year, month, day, hour
+# and select data from 2012-10-01 to 2017-09-30
+temp <- temp %>% 
+  mutate(datetime = ymd_hm(datetime)) %>% 
+  mutate(year = year(datetime), month = month(datetime), day = day(datetime),
+         hour = hour(datetime)) %>%
+  filter(!(year == 2017 & month > 9))
+
+hum <- hum %>% 
+  mutate(datetime = ymd_hm(datetime)) %>% 
+  mutate(year = year(datetime), month = month(datetime), day = day(datetime),
+         hour = hour(datetime)) %>%
+  filter(!(year == 2017 & month > 9))
+
+wind <- wind %>% 
+  mutate(datetime = ymd_hm(datetime)) %>% 
+  mutate(year = year(datetime), month = month(datetime), day = day(datetime),
+         hour = hour(datetime)) %>%
+  filter(!(year == 2017 & month > 9))
+
+des <- des %>% 
+  mutate(datetime = ymd_hm(datetime)) %>% 
+  mutate(year = year(datetime), month = month(datetime), day = day(datetime),
+         hour = hour(datetime)) %>%
+  filter(!(year == 2017 & month > 9))
+
+# Write a function to convert the unit of temperature
+kelvin_to_celsius <- function(temp_K) {
+  # Converts Kelvin to Celsius
+  temp_C <- temp_K - 273.15
+  temp_C
+}
+
+# Converts the unit of temperature from Kelvin to Celsius in the data of air temperture 
+temp <- temp %>% 
+  mutate_at(vars(2:28), funs(kelvin_to_celsius))
+
+# Add the strata column to the data of air temperature
+temp <- temp %>% 
+  mutate(term = case_when(datetime >= "2012-10-01" & datetime <"2013-10-01" ~
+                            "2012.10-2013.09",
+                          datetime >= "2013-10-01" & datetime <"2014-10-01" ~
+                            "2013.10-2014.09",
+                          datetime >= "2014-10-01" & datetime <"2015-10-01" ~
+                            "2014.10-2015.09",
+                          datetime >= "2015-10-01" & datetime <"2016-10-01" ~
+                            "2015.10-2016.09",
+                          TRUE ~ "2016.10-2017.09"
+                  ))
+
+# Add the strata column to the data of humidity
+hum <- hum %>% 
+  mutate(term = case_when(datetime >= "2012-10-01" & datetime <"2013-10-01" ~
+                            "2012.10-2013.09",
+                          datetime >= "2013-10-01" & datetime <"2014-10-01" ~
+                            "2013.10-2014.09",
+                          datetime >= "2014-10-01" & datetime <"2015-10-01" ~
+                            "2014.10-2015.09",
+                          datetime >= "2015-10-01" & datetime <"2016-10-01" ~
+                            "2015.10-2016.09",
+                          TRUE ~ "2016.10-2017.09"
+                  ))
+
+# Add the strata column to the data of wind speed
+wind <- wind %>% 
+  mutate(term = case_when(datetime >= "2012-10-01" & datetime <"2013-10-01" ~
+                            "2012.10-2013.09",
+                          datetime >= "2013-10-01" & datetime <"2014-10-01" ~
+                            "2013.10-2014.09",
+                          datetime >= "2014-10-01" & datetime <"2015-10-01" ~
+                            "2014.10-2015.09",
+                          datetime >= "2015-10-01" & datetime <"2016-10-01" ~
+                            "2015.10-2016.09",
+                          TRUE ~ "2016.10-2017.09"
+                  ))
+
+# Add the strata column to the data of weather description
+des <- des %>% 
+  mutate(term = case_when(datetime >= "2012-10-01" & datetime <"2013-10-01" ~
+                            "2012.10-2013.09",
+                          datetime >= "2013-10-01" & datetime <"2014-10-01" ~
+                            "2013.10-2014.09",
+                          datetime >= "2014-10-01" & datetime <"2015-10-01" ~
+                            "2014.10-2015.09",
+                          datetime >= "2015-10-01" & datetime <"2016-10-01" ~
+                            "2015.10-2016.09",
+                          TRUE ~ "2016.10-2017.09"
+                  ))
+
+```
+
+#### Select 10 US Cities: Seattle, Portland, San Francisco, Los Angeles, San Diego, Boston, New York, Philadelphia, Jacksonville, Miami.
+
+```{r, warning=FALSE, message=FALSE}
+
+temp <- temp %>% 
+  mutate(date = ymd(paste(year, month, day, sep = "-"))) %>% 
+  select(date, term, year, month, day, hour, Seattle, Portland, `San Francisco`,
+         `Los Angeles`, `San Diego`, Boston, `New York`, Philadelphia, Jacksonville, Miami)
+
+des <- des %>% 
+  mutate(date = ymd(paste(year, month, day, sep="-"))) %>% 
+  select(date, term, year, month, day, hour, Seattle, Portland, `San Francisco`,
+         `Los Angeles`, `San Diego`, Boston, `New York`, Philadelphia, Jacksonville, Miami)
+
+hum <- hum %>% 
+  mutate(date = ymd(paste(year, month, day, sep="-"))) %>% 
+  select(date, term, year, month, day, hour, Seattle, Portland, `San Francisco`,
+         `Los Angeles`, `San Diego`, Boston, `New York`, Philadelphia, Jacksonville, Miami)
+
+wind <- wind %>% 
+  mutate(date = ymd(paste(year, month, day, sep="-"))) %>% 
+  select(date, term, year, month, day, hour, Seattle, Portland, `San Francisco`,
+         `Los Angeles`, `San Diego`, Boston, `New York`, Philadelphia, Jacksonville, Miami)
+```
+
+#### check NA proportion
+```{r, warning=FALSE, message=FALSE}
+a=temp %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+a=data.frame(t(a))
+colnames(a)="temp_NA"
+
+b=des %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+b=data.frame(t(b))
+colnames(b)="des_NA"
+
+c=hum %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+c=data.frame(t(c))
+colnames(c)="hum_NA"
+
+d=wind %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+d=data.frame(t(d))
+colnames(d)="wind_NA"
+
+NA_prop=cbind(a,b,c,d)*100
+NA_prop=NA_prop[c(7:16),]
+round(apply(NA_prop, 2, quantile),2)
+```
+
+We can see that missing data proportion is not high (<2%). When analyzing each of these variables, we deleted the hours with missing data. 
+
+### 3. Analysis of Weather Trend in the Past Five Years
+
+#### Calculate Heat Index
+
+```{r, warning=FALSE, message=FALSE}
+
+if (!require("weathermetrics")) {
+  install.packages("weathermetrics")
+  library("weathermetrics")
+}
+
+temp <- as.data.frame(temp)
+hum <- as.data.frame(hum)
+heat <- temp
+
+for(i in c(7:16)){
+  heat[,i] = heat.index(t = temp[,i], rh = hum[,i], temperature.metric = "celsius", 
+                      output.metric = "celsius", round = 1)
+}
+```
+
+#### Calculate Wind Chill
+
+```{r, warning=FALSE, message=FALSE}
+
+if (!require("ThermIndex")) {
+  install.packages("ThermIndex")
+  library("ThermIndex")
+}
+
+wind <- as.data.frame(wind)
+chill <- temp
+
+for(i in c(7:16)){
+  chill[,i] = wc(temp[,i], wind[,i])
+}
+```
+
+#### Calculate Apparent Temperature
+
+[Apparent temperature][7], is derived from either a combination of temperature and wind [wind chill][8] or temperature and humidity [heat index][9] for the indicated hour. When the temperature is lower than 10$^0C$ (50$^0F$) and the wind speed is higher than 1.34 m/s (3 mph), wind chill was used for that point for the Apparent Temperature. When the temperature is above 26.7$^0C$ (80$^0F$), the heat index will be used for apparent temperature. Otherwise, the apparent temperature will be the ambient air temperature.
+
+```{r, warning=FALSE, message=FALSE}
+
+app <- temp
+
+for(i in c(1:43812)){
+  for (j in c(7:16)){
+    app[i,j] = ifelse(is.na(app[i,j]), NA, 
+                      ifelse(app[i,j] >26.7, heat[i,j], 
+                             ifelse(app[i,j] <10 & wind[i,j] >1.34, chill[i,j],
+                                    temp[i,j])))
+  }
+}
+```
+
+#### Check NA proportion
+
+```{r, warning=FALSE, message=FALSE}
+
+a <- heat %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+a <- data.frame(t(a))
+colnames(a) <- "heat_NA"
+
+b <- chill %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+b <- data.frame(t(b))
+colnames(b) <- "chill_NA"
+
+c <- temp %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+c <- data.frame(t(c))
+colnames(c) <- "temp_NA"
+
+d <- des %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+d <- data.frame(t(d))
+colnames(d) <- "des_NA"
+
+e <- app %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+e <- data.frame(t(e))
+colnames(e) <- "app_NA"
+
+f <- hum %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+f <- data.frame(t(f))
+colnames(f) <- "hum_NA"
+
+g <- wind %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+g <- data.frame(t(g))
+colnames(g) <- "wind_NA"
+
+NA_prop <- cbind(a,b,c,d,e,f,g)*100
+NA_prop <- NA_prop[c(7:16),]
+```
+
+#### 3.1 Increasing Trend of Daily Air Temperature 
+
+##### Plot daily highest, lowest, average temperatures
+
+```{r, fig.width=16, fig.height=20, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+
+if (!require("grid")) {
+  install.packages("grid")
+  library("grid")
+}
+
+# create a list to store 10 plots
+plot <- list()
+
+# make the 10 plots, 1 for each city
+for(i in c(7:16)){
+  cityname <- names(temp[i])
+  citytemp <- cbind(temp[,1:6], temp = temp[,i])
+  names(citytemp)[7] = "temp"
+  
+  citytemps <- citytemp %>% 
+    group_by(year, month, day) %>% 
+    summarize(highest = max(temp, na.rm = TRUE), average = mean(temp, na.rm = TRUE),
+              lowest = min(temp, na.rm = TRUE))
+  
+  citydatetemp <- left_join(citytemps,(citytemp %>% 
+                                         select(year, month, day, term, date)),
+                            by = c("year", "month", "day"))
+  
+  citydatetemp <- citydatetemp %>% 
+    filter(!duplicated(date)) %>% 
+    gather(type, temp, c(`highest`, `average`, `lowest`))
+ 
+  trendhigh = lm(temp ~ time(temp), data = citydatetemp[citydatetemp$type == "highest",])
+  trendavg = lm(temp ~ time(temp), data = citydatetemp[citydatetemp$type == "average",])
+  trendlow = lm(temp ~ time(temp), data = citydatetemp[citydatetemp$type == "lowest",])
+  citydatetemp$trend = c(fitted(trendhigh), fitted(trendavg), fitted(trendlow))
+  
+  p <- ggplot(citydatetemp, aes(date, temp, color = term)) +
+    geom_point(alpha = 1) +
+    geom_line(aes(date, trend), color = "black") +
+    scale_y_continuous(expression("daily temperature " ( degree~C))) +
+    xlab("") +
+    ggtitle(cityname) +
+    facet_grid(. ~ type)  +
+    theme(title = element_text(colour = "black",size = 13),
+          axis.text = element_text(colour = "grey20",size = 11),
+          axis.title = element_text(colour = "black",size = 12),
+          legend.text = element_text(colour = "black",size = 12),
+          legend.title = element_text(colour = "black",size = 12),
+          strip.text.x = element_text(colour = "black",size = 12)) +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    theme(legend.position = "none")
+    
+    plot[[i-6]] = p
+}
+
+# arrange 10 plots on a page
+grid.arrange(plot[[1]], plot[[2]], plot[[3]], plot[[4]], plot[[5]], plot[[6]], plot[[7]],
+             plot[[8]], plot[[9]], plot[[10]], ncol = 2, nrow = 5)
+```
+
+We organized all the air temperatures in average, highest, and lowest of each day in the past fives years. The scatterplots for the 10 cities are shown below, and we could visually see that the temperature are roughly following an increasing trend over the past five years, especially in west coast cities like Portland, San Francisco, Los Angeles, and San Diego, and east coast cities such as Jacksonville and Miami. 
+
+Note: One thing needs to be noted here is that we only have 5 years' data. Thus, it might be hard for us to accurately capture the trend, which usually requires tens of years' data. The increasing trend we show in the above plots is just roughly estimated by linear regression.
+
+#### 3.2. "Feel Like" Temperature
+
+Sometimes when we stepped out the house and though it would be not cold since the temperature was above 0 $^0C$ (32 $^0F$), but it turned out very chilly; and sometimes you thought 30 $^0C$ (86 $^0F$) is not super hot, but when you went outside you got sweating in seconds. How you actually feel the temperature gives a better idea about the weather when you go outdoors.  
+
+"Feel like" temperature, formally called apparent temperature, is derived from either a combination of temperature and wind (wind chill) or temperature and humidity (heat index) for the indicated hour. When the temperature is lower than 10 $^0C$ (50 $^0F$) and the wind speed is higher than 1.34 m/s (3 mph), wind chill was used for that point for the Apparent Temperature. When the temperature is above 26.7 $^0C$ (80 $^0F$), the heat index will be used for apparent temperature. Otherwise, the apparent temperature will be the ambient air temperature.
+
+##### Plot apparent temperatures comparing to air temperature
+
+```{r, fig.width=20, fig.height=18, warning=FALSE, message=FALSE}
+
+if (!require("zoo")) {
+  install.packages("zoo")
+  library("zoo")
+}
+
+# create a list to store 10 plots
+plot = list()
+
+# write a function to arrange several plots, but only show one shared figure legend
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
+                                       position = c("bottom", "right")) {
+	plots <- list(...)
+	position <- match.arg(position)
+	g <- ggplotGrob(plots[[1]] + 
+	theme(legend.position = position))$grobs
+	legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+	lheight <- sum(legend$height)
+	lwidth <- sum(legend$width)
+	gl <- lapply(plots, function(x) x +
+	theme(legend.position = "none"))
+	gl <- c(gl, ncol = ncol, nrow = nrow)
+
+	combined <- switch(position,
+	                   "bottom" = arrangeGrob(do.call(arrangeGrob, gl), 
+	                   legend,ncol = 1,
+					heights = unit.c(unit(1, "npc") - lheight, lheight)),
+					"right" = arrangeGrob(do.call(arrangeGrob, gl),
+				  legend, ncol = 2,
+					widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+
+	grid.newpage()
+	grid.draw(combined)
+
+	invisible(combined)
+}
+
+# make the 10 plots, 1 for each city
+for(i in c(7:16)){
+  cityname = names(temp[i])
+  temp_city = cbind(temp[,1:7], city = temp[,i])
+  names(temp_city)[8] = "temp"
+  app_city = cbind(app[,1:7], city = app[,i])
+  names(app_city)[8] = "app"
+
+temp_city <- temp_city %>% 
+  group_by(year, month, day) %>% 
+  summarise(highest = max(temp, na.rm = TRUE), lowest = min(temp, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  group_by(year, month) %>%
+  summarise(highest_air = mean(highest), lowest_air = mean(lowest)) %>% 
+  ungroup()
+  
+app_city <- app_city %>% 
+  group_by(year, month, day) %>% 
+  summarise(highest = max(app, na.rm = TRUE), lowest = min(app, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  group_by(year, month) %>%
+  summarise(highest_apparent = mean(highest), lowest_apparent = mean(lowest)) %>% 
+  ungroup() %>%
+  left_join(temp_city, by = c("year","month"))
+
+app_city <- app_city %>% gather(type, temperature, -month, -year)  
+mon <- paste(app_city$year, app_city$month, sep = "-")
+mon <- as.yearmon(mon)
+app_city <- cbind(app_city, mon = mon)
+
+p <-  app_city %>%
+  ggplot(aes(mon, temperature, col = type, group = type)) + 
+  geom_line(size = 0.8) +
+  xlab("") +
+  scale_y_continuous(expression("daily temperature " ( degree~C))) +
+  ggtitle(cityname) +
+  theme(title = element_text(colour = "black",size = 15),
+          axis.text = element_text(colour = "grey20",size = 13),
+          axis.title = element_text(colour = "black",size = 14),
+          legend.text = element_text(colour = "black",size = 15),
+          legend.title = element_text(colour = "black",size = 15)) +
+  theme(plot.title = element_text(hjust = 0.5))
+  plot[[i-6]] = p
+}
+
+# arrange 10 plots on a page
+grid_arrange_shared_legend(plot[[1]], plot[[2]], plot[[3]], plot[[4]], plot[[5]],
+                           plot[[6]], plot[[7]], plot[[8]], plot[[9]], plot[[10]], 
+                           ncol = 3, nrow = 4, position = "right")
+```
+
+We plotted the daily highest and lowest air temperature comparing to the corresponding apparent temperatures of the 10 US cities in the past five years. A clear finding here is that the difference between the daily highest apparent temperature and air temperature is becoming larger in summer in the recent three years in San Francisco, Los Angeles, and Boston, compared to the earlier 2 years. This means people in these cities were feeling hotter than before.  
+
+#### 3.3. Weather Description
+
+We believe most people feel much happier in the morning when stepping outdoors and see a clear sunny day, and start getting worried if it's cloudy. Rain and snow get most complains because they always cause traffic jam and bus delays. Here we analyzed the weather descriptions got from the original data, and classified them in seven categories: sunny, cloudy, rainy, fog, haze, snow, and storm.
+
+##### Extract the weather description data
+
+```{r, warning=FALSE, message=FALSE}
+
+term <- list()
+
+for(i in c(7:16)){
+  term[[i-6]] = levels(as.factor(as.data.frame(des)[,i]))
+}
+term <- unlist(term)
+term <- as.data.frame(term)
+names(term)<- c("term")
+term <- term %>% 
+  filter(!duplicated(term))
+term
+```
+
+##### Classify the weather description to seven categories: sunny, cloudy, rainy, fog, haze, snow, and storm from the original description. Plot weather description each year
+
+```{r, fig.width=20, fig.height=18, warning=FALSE, message=FALSE}
+
+# create a list to store 10 plots
+plot <- list()
+
+# assign one clour to each weather category
+color <- c("sunny" = '#fb61d7',"cloudy" = '#00b6eb', "fog" = '#53b400',"haze" = '#c49a00', 
+        "rainy" = '#f8766d',"snow" = '#00c094', "storm" = '#a58aff')
+
+# make the 10 plots, 1 for each city
+for(i in c(7:16)){
+  cityname <- names(des[i])
+  citydes <- cbind(des[,1:6], d = des[,i])
+  names(citydes)[7] = "d"
+  citydes <- citydes %>% 
+    filter(!is.na(d)) %>% 
+    mutate(des = ifelse(d %in% c("broken clouds", "scattered clouds", "overcast clouds"),
+                      "cloudy", 
+                      ifelse(d %in% c("fog", "mist"), "fog", 
+                             ifelse(d %in% c("dust", "haze", "sand", "smoke", 
+                                             "sand/dust whirls", "volcanic ash"), "haze",
+                                    ifelse(d %in% c("heavy snow", "snow", "light snow",
+                                                    "light shower snow"), "snow", 
+                                           ifelse(d %in% c("squalls", "thunderstorm",
+                                                           "proximity thunderstorm", 
+                                                           "heavy thunderstorm",
+                                                           "tornado"), "storm", 
+                                                  ifelse(d %in% c("few clouds", 
+                                                                  "sky is clear"), "sunny",
+                                                         "rainy"))))))) %>% 
+    group_by(term, des) %>% 
+    mutate(count = n()) %>% 
+    filter(!duplicated(count)) %>%
+    ungroup()
+  
+  p <- citydes %>%
+    mutate(des = reorder(des, count, FUN = mean)) %>%
+    ggplot(aes(fill = des, y = count, x = term)) +
+    geom_bar(stat = "identity", position = "fill", width = 0.5) +
+    ggtitle(cityname) +
+    scale_y_continuous(labels = scales::percent) + 
+    xlab("") + 
+    ylab("Proportion") +
+    theme(title = element_text(colour = "black",size = 15),
+          axis.text = element_text(colour = "grey20",size = 13),
+          axis.title = element_text(colour = "black",size = 14),
+          legend.text = element_text(colour = "black",size = 15),
+          legend.title = element_text(colour = "black",size = 15)) +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    theme(axis.text.x = element_text(angle = 15, hjust = 0.5, vjust = 0.6)) +
+    scale_fill_manual(values = color) 
+    
+    plot[[i-6]] = p
+}
+
+# arrange 10 plots on a page
+grid_arrange_shared_legend(plot[[1]], plot[[2]], plot[[3]], plot[[4]], plot[[5]],
+                           plot[[6]], plot[[7]], plot[[8]], plot[[9]], plot[[10]], 
+                           ncol = 3, nrow = 4, position = "right")
+```
+
+A clear trend in cities located in the west coast is that the proportion of sunny time has been decreasing in the past 4 years, while the proportion of fog and haze times kept increasing. The frequent devastating wildfire in California may be a culprit, as it brought tons of smoke and dust into air, resulting more and more fog and haze time. Roughly, we could  see that most cities have sunny time as most prevalent, and cloudy time as the second in most years. However, to our surprise, Miami has the more cloudy time than sunny time, so as New York city. 
+
+
+### 4. Average Number of Nice Days in A Year (Recommendation for Living)
+
+Usually we care more about the weather where we live for long time, and there is a criteria to count the "nice days" to make recommendations for places which are more suitable for living. So we calculated the average number of nice days of the 10 cities using the data from the past five years.
+
+The criteria for nice days are referenced from [here][10].
+
+1. High temperature between 65 and 85 $^0F$ (18.33-29.44 $^0C$)
+
+2. Maximum dew point temperature less than or equal to 65 $^0F$ (18.33 $^0C$)
+
+3. Peak daily wind (including gusts) less than 25 mph (11.176 m/s)
+
+4. Average daily cloud cover less than or equal to 65 percent
+
+5. No measurable precipitation
+
+Dew point temperature is calculated using temperature and humidity. Cloud coverage is assigned to each description referencing from [here][11].
+
+```{r, warning=FALSE, message=FALSE}
+
+dew <- hum
+
+# calculate dew point temperature
+for(i in c(1:43812)){
+  for (j in c(7:16)){
+    dew[i,j] = ifelse(is.na(hum[i,j]), NA, 
+                      humidity.to.dewpoint(rh = hum[i,j],t = temp[i,j], 
+                                           temperature.metric = "celsius"))
+  }
+}
+
+highestfun <- function(x){
+    a = max(x, na.rm = TRUE)
+    a
+}
+
+averagefun = function(x){
+  a <- mean(x, na.rm = TRUE)
+  a
+}
+
+sumfun = function(x){
+  a <- sum(x, na.rm = TRUE)
+  a
+}
+
+# assign a cloud coverage to different weather description
+cc <- function(x){
+  a <- ifelse(is.na(x), NA, 
+              ifelse(x == "broken clouds", 75, 
+                     ifelse(x == "scattered clouds", 44, 
+                            ifelse(x == "few clouds", 12.5, 
+                                   ifelse(x == "sky is clear", 0, 100)))))
+  a
+}
+
+# write a function to indicate whether it is precipitation (rain or snow) or not
+rain <- function(x){
+  a <- ifelse(is.na(x), NA, 
+              ifelse(x %in% c("broken clouds", "scattered clouds", "overcast clouds",
+                              "fog", "mist", "dust", "haze", "sand", "smoke", 
+                              "sand/dust whirls", "volcanic ash", "squalls",
+                              "thunderstorm", "proximity thunderstorm", 
+                              "heavy thunderstorm", "tornado", "few clouds", 
+                              "sky is clear"),0,1))
+  a
+}
+
+# calculate the daily highest temperature, criteria 1
+nice_t <- temp[,c(3:5, 7:16)] %>% 
+  group_by(year, month, day) %>% 
+  summarise_all(funs(high = highestfun))
+
+# calculate the daily maximum dew point temperature, criteria 2
+nice_d <- dew[,c(3:5, 7:16)] %>% 
+  group_by(year, month, day) %>% 
+  summarise_all(funs(high = highestfun))
+
+# calculate the daily maximum wind speed, criteria 3
+nice_w <- wind[,c(3:5, 7:16)] %>% 
+  group_by(year, month, day) %>% 
+  summarise_all(funs(high = highestfun))
+
+# calculate the average daily cloud cover, criteria 4
+cloud <- des[,c(3:16)] %>% 
+  group_by(year, month, day, hour) %>% 
+  summarise_all(funs(c = cc))
+nice_c <- cloud[,c(1:3, 5:14)] %>% 
+  group_by(year, month, day) %>% 
+  summarise_all(funs(avg = averagefun))
+
+# calculate how many hours of precipitation (rain or snow) in a day, criteria 5
+rain <- des[,c(3:16)] %>% 
+  group_by(year, month, day, hour) %>% 
+  summarise_all(funs(r = rain))
+nice_r <- rain[,c(1:3, 5:14)] %>% 
+  group_by(year, month, day) %>% 
+  summarise_all(funs(sum = sumfun))
+
+# create a dataframe (niceday) to indicated whether it is a nice day or not, based on the above 5 criteria 
+niceday <- nice_r
+
+for(i in 1:1826){
+  for(j in 4:13){
+    niceday[i,j] = ifelse((nice_t[i,j] < 29.44 & nice_t[i,j] > 18.33 & nice_d[i,j] <= 18.33
+                           & nice_r[i,j] == 0 & nice_w[i,j] < 11.176 & nice_c[i,j] <= 65),
+                          1, 0)
+  }
+}
+
+# Add the strata column to the data of nice day
+niceday <- niceday %>% 
+  mutate(term = case_when(year == 2012 | (year == 2013 & month<=9) ~ "2012.10-2013.09",
+                          (year == 2013 & month >= 10) | (year == 2014 & month <= 9) ~
+                            "2013.10-2014.09",
+                          (year == 2014 & month >= 10) | (year == 2015 & month <= 9) ~
+                            "2014.10-2015.09",
+                          (year == 2015 & month >= 10) | (year == 2016 & month <= 9) ~
+                            "2015.10-2016.09",
+                          TRUE ~ "2016.10-2017.09"
+                  ))
+
+# calculate the number of nice days for each term/year
+nicedayresult <- niceday %>% group_by(term) %>% summarise_all(funs(sum = sumfun))
+nicedayresult <- nicedayresult[,5:14]
+names(nicedayresult) <- c("Seattle", "Portland", "San Francisco", "Los Angeles", 
+                          "San Diego", "Miami", "Jacksonville", "Philadelphia", 
+                          "New York", "Boston")
+
+# calculate the average number of nice days for the 5 terms/years
+nd <- data.frame(apply(nicedayresult, 2, mean))
+nd$city <- row.names(nd)
+names(nd) <- c("niceday", "city")
+
+# plot the aerage number of nice days
+p <- ggplot(nd, aes(x = reorder(city, niceday), y = niceday)) +
+  geom_bar(stat = 'identity', colour = "dodgerblue", fill = "dodgerblue", width = 0.6) +
+  geom_text(aes(label = niceday), position = position_dodge(width = 0.6), hjust = -0.3, 
+            vjust = 0.3, color = "grey20", size = 4) +
+  coord_flip() +
+  xlab("") +
+  ylab("") +
+  scale_y_continuous(limits = c(0, 150)) +
+  ggtitle("Average Number of Nice Days in a Year") +
+  theme(title = element_text(colour = "black",size = 13),
+        axis.text = element_text(colour = "grey20",size = 12),
+        axis.title = element_text(colour = "black",size = 12),
+        legend.text = element_text(colour = "black",size = 12),
+        legend.title = element_text(colour = "black",size = 12)) +
+  theme(plot.title = element_text(hjust = 0.5))
+p
+```
+
+Ranked as 1st, Los Angeles has the most nice days in a year among the 10 US cities, and San Diego follows. Miami, which is super hot and humid, has the fewest number of nice days, may not be a good choice for long time living.
+
+### 5. Weather Score (Recommendation for Traveling)
+
+Weather has a big impact on the success of a vacation. Most people wish to travel with a good weather. So we tried to set up a simple system (weather score) to make some recommendations for travelers from weather's perspective: when is the best time to visit a certain city?  And which city is more suitable to visit in a certain month?
+
+The weather score takes both apparent temperature and sunny time into consideration, with a scale of 20 (10 for each). A higher weather score means more suitable for traveling.
+
+__Temperature Score__ (referenced from [here][12]): For each hour between 8:00 AM and 6:00 PM of each day in the analysis period (2012.10-2017.09), independent scores are computed for apparent temperature. Those hourly scores are then aggregated into days, averaged over all the five years. Our temperature score is 0 for apparent temperatures below 10 $^0C$ (50$^0F$), rising linearly to 9 for 18.3 $^0C$ (65 $^0F$), to 10 for 23.9 $^0C$ (75 $^0F$), falling linearly to 9 for 26.7 $^0C$ (80 $^0F$), and to 0 for 32.2 $^0C$ (90 $^0F$) or hotter. Functions for the temperature score against temeprature:
+
+10-18.3$^0C$: y=1.0843*x-10.8434
+
+18.3-23.9$^0C$: y=0.1786*x+5.7316
+
+23.9-26.7$^0C$: y=18.5347-0.3571*x
+
+26.7-32.2$^0C$: y=52.6921-1.6364*x
+
+```{r, warning=FALSE, message=FALSE}
+# temperature score
+score_app <- app %>% 
+  filter(hour >= 8 & hour <= 18) %>% 
+  gather(city, app, c(`Seattle`, `Portland`, `San Francisco`, `Los Angeles`, `San Diego`,
+                      `Boston`, `New York`, `Philadelphia`, `Jacksonville`, `Miami`)) %>%
+  mutate(score = case_when(app < 10 | app >= 32.2 ~ 0,
+                         app >= 10 & app < 18.3 ~ (1.0843*app-10.8434),
+                         app >= 18.3 & app < 23.9 ~ (0.1786*app+5.7316),
+                         app >= 23.9 & app < 26.7 ~ (18.5347-0.3571*app),
+                         app >= 26.7 & app < 32.2 ~ (52.6921-1.6364*app),
+                         TRUE ~ NA_real_))
+score_app <- score_app %>%
+  group_by(month, city) %>%
+  mutate(score_tem = mean(score, na.rm = TRUE)) %>%
+  filter(!duplicated(score_tem)) %>%
+  select(month, city, score_tem)
+```
+
+__Sunny Score__ (defined by ourselves): The proportion of sunny time between 8:00 AM and 6:00 PM is calculated for each month, and averaged over the past five years. All the sunny time proportions for each city and in each month (10*12 = 120 120 proportions) were ranked from the lowest to the highest (the rank of the highest proportion is 120, and the lowest is 1). Then our sunny score for a specific city and specific month is its rank divided by 12 (highest proportion has a score of 10, and the lowest 0.1).
+
+```{r, warning=FALSE, message=FALSE}
+# sunny score  
+score_des <- des %>% 
+  filter(hour >= 8 & hour <= 18) %>% 
+  gather(city, des, c(`Seattle`, `Portland`, `San Francisco`, `Los Angeles`, `San Diego`,
+                      `Boston`, `New York`, `Philadelphia`, `Jacksonville`, `Miami`)) %>% 
+  filter(!is.na(des)) %>% 
+  mutate(wea = ifelse(des %in% c("broken clouds", "scattered clouds", "overcast clouds"),
+                    "cloudy", 
+                    ifelse(des %in% c("fog", "mist"), "fog", 
+                           ifelse(des %in% c("dust", "haze", "sand", "smoke", 
+                                             "sand/dust whirls", "volcanic ash"), "haze",
+                                  ifelse(des %in% c("heavy snow", "snow", "light snow",
+                                                    "light shower snow"), "snow",
+                                         ifelse(des %in% c("squalls", "thunderstorm",
+                                                           "proximity thunderstorm", 
+                                                           "heavy thunderstorm",
+                                                           "tornado"), "storm", 
+                                                ifelse(des %in% c("few clouds", 
+                                                                  "sky is clear"), "sunny",
+                                                       "rainy"))))))) %>% 
+  group_by(year, month, city, wea) %>% 
+  mutate(n = n()) %>% 
+  filter(!duplicated(wea)) %>% 
+  select(year, month, city, wea, n) %>% 
+  group_by(year, month, city) %>% 
+  mutate(prop = prop.table(n))
+
+sunny_prop <- score_des %>%
+  filter(wea == "sunny") %>% 
+  ungroup() %>%
+  select(month, city, prop) %>%
+  group_by(month, city) %>%
+  mutate(prop = mean(prop)) %>% 
+  filter(!duplicated(prop)) %>%
+  ungroup() %>%
+  mutate(score_sun = rank(prop)/12)
+```
+
+__Weather Score__ = __Temperature Score__ + __Sunny Score__
+
+```{r, warning=FALSE, message=FALSE}
+# total weather score
+weather_score=left_join(score_app, sunny_prop, by=c("month", "city")) %>%
+  mutate(score_total=score_tem+score_sun) %>%
+  select(month, city, score_total) %>%
+  ungroup() %>%
+  spread(month, score_total)
+```
+
+```{r, warning=FALSE, message=FALSE}
+# present weather score in a table
+if (!require("knitr")) {
+  install.packages("knitr")
+  library("knitr")
+}
+
+# round score
+weather_score=cbind(weather_score[,1], round(weather_score[,-1],1))
+
+# rearrange citynames
+citynames=c("Seattle", "Portland", "San Francisco", "Los Angeles", "San Diego", 
+            "Boston", "New York", "Philadelphia", "Jacksonville", "Miami")
+weather_score=weather_score %>%
+  slice(match(citynames, city))
+
+# make city names as rownames 
+rownames(weather_score)=weather_score[,1]
+weather_score[,1]=NULL
+
+# change numeric colnames to month abbreviation
+colnames=as.numeric(colnames(weather_score))
+colnames=month.abb[colnames]
+colnames(weather_score)=colnames
+kable(weather_score)
+
+```
+
+
+### 6. Conclusions
+
+From all the analyses, we found that in the past five years (from October 2012 to September 2017), the temperatures in the 10 chosen US coastal cities (Seattle, Portland, San Francisco, Los Angeles, San Diego, Boston, New York, Philadelphia, Jacksonville, and Miami) roughly followed an upward trend. People in some cities (San Francisco, Los Angeles, and Boston) were feeling hotter during the summer in the recent 3 years than before. While the temperature went up, the sunny time in west coast cities dropped over years, and the fog and haze time increased. 
+
+From weather's perspective, we calculated nice days and weather scores for these cities. Los Angeles turned out to have the most nice days and received the highest weather score, even in December and January. So we highly recommend to visit Los Angeles in this coming Christmas and New Year's holiday if you haven't been there before.
+
+
+
+[1]: http://www.lethalletham.com/posts/winter2015.html
+[2]: https://boston.cbslocal.com/2018/08/29/boston-weather-forecast-heat-wave-record-summer-temperatures-massachusetts/
+[3]: https://www.ucsusa.org/global-warming/science-and-impacts/impacts/global-warming-rain-snow-tornadoes.html#.XBNGIRNKgWp
+[4]: https://www.ucsusa.org/global-warming/science-and-impacts/science/temperature-is-rising#.XBNGdBNKgWq
+[5]: https://en.wikipedia.org/wiki/Global_warming
+[6]: https://en.wikipedia.org/wiki/2014%E2%80%9316_El_Ni%C3%B1o_event
+[7]: https://www.meteor.iastate.edu/~ckarsten/bufkit/apparent_temperature.html
+[8]: https://www.weather.gov/safety/cold-wind-chill-chart
+[9]: https://www.weather.gov/safety/heat-index
+[10]: https://www.washingtonpost.com/news/capital-weather-gang/wp/2018/08/07/the-united-states-of-nice-days-heres-where-and-when-to-find-the-nations-most-frequent-ideal-weather/?utm_term=.f92a1f033227
+[11]: https://books.google.com/books?id=sX1KDwAAQBAJ&pg=SA1-PA27&lpg=SA1-PA27&dq=Cloud+Ceiling+Summation+Coverage+and+Terms&source=bl&ots=MayVNTquP1&sig=9TsjnA9DXE5PH0Emr3BBmPIHqZA&hl=en&sa=X&ved=2ahUKEwj59dfCwInfAhXtRt8KHYchDUIQ6AEwCXoECAkQAQ#v=onepage&q&f=false
+[12]: https://weatherspark.com/y/26197/Average-Weather-in-Boston-Massachusetts-United-States-Year-Round
+
+[Data Source]: https://www.kaggle.com/selfishgene/historical-hourly-weather-data
+
+
+
+

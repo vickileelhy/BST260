@@ -1,4 +1,4 @@
-# BST260 Final Project ReadMe
+# BST260 Final Project 
 
 ## Team members:
 
@@ -11,7 +11,7 @@ Fenglei Wang
 
 Weather Conditions in 10 US cities in the past 5 years (2012.10-2017.09)
 
-## Data Sources: 
+## Data Source: 
 
 Temperature
 

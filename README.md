@@ -9,9 +9,9 @@ Fenglei Wang
 
 ## Topic:
 
-Weather Conditions in 10 US cities in the past 5 years (2012.10-2017.09)
+Weather Conditions in 10 US Cities in the Past 5 Years (2012.10-2017.09)
 
-## Data Source: 
+## Data Sources: 
 
 Temperature
 

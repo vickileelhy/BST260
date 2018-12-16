@@ -1,6 +1,6 @@
 # BST260 Final Project 
 
-## Team members:
+## Team Members:
 
 Hongyan Li
 
